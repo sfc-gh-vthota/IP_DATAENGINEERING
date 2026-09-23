@@ -31,6 +31,27 @@ CREATE OR REPLACE TABLE STG_SERVER_SUMMARY (
 );
 
 ----------------------------------------------------------------------
+-- STG_DC_DEVICE_SUMMARY (SCD Type 2 - Composite PK: DC_ID + DEVICE_TYPE)
+----------------------------------------------------------------------
+CREATE OR REPLACE TABLE STG_DC_DEVICE_SUMMARY (
+    DC_ID               VARCHAR(10),
+    DEVICE_TYPE         VARCHAR(30),
+    DC_NAME             VARCHAR(100),
+    DC_REGION           VARCHAR(50),
+    DC_TIER             VARCHAR(10),
+    DEVICE_COUNT        NUMBER,
+    TOTAL_THROUGHPUT_GBPS NUMBER,
+    ONLINE_COUNT        NUMBER,
+    OFFLINE_COUNT       NUMBER,
+    AVG_PORT_COUNT      NUMBER,
+    DW_INSERT_DTS       TIMESTAMP_NTZ,
+    DW_UPDATE_DTS       TIMESTAMP_NTZ,
+    DW_ACTIVE_FLAG      VARCHAR(1),
+    DW_START_DTS        TIMESTAMP_NTZ,
+    DW_END_DTS          TIMESTAMP_NTZ
+);
+
+----------------------------------------------------------------------
 -- STG_INFRA_ASSETS (SCD Type 2 - History Tracking)
 ----------------------------------------------------------------------
 CREATE OR REPLACE TABLE STG_INFRA_ASSETS (
