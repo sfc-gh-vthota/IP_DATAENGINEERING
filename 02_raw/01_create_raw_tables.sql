@@ -1,0 +1,79 @@
+/*=============================================================================
+  RAW Layer - Table Definitions
+  Full-refresh source tables representing JPMC IP infrastructure data
+=============================================================================*/
+
+USE SCHEMA IP_DATAENGINEERING.RAW;
+
+CREATE OR REPLACE TABLE DATA_CENTERS (
+    DC_ID           VARCHAR(10),
+    DC_NAME         VARCHAR(100),
+    DC_LOCATION     VARCHAR(200),
+    DC_REGION       VARCHAR(50),
+    DC_TIER         VARCHAR(10),
+    TOTAL_CAPACITY  NUMBER(38,0),
+    CURRENT_USAGE   NUMBER(38,0),
+    DC_STATUS       VARCHAR(20),
+    CONTACT_EMAIL   VARCHAR(100)
+);
+
+CREATE OR REPLACE TABLE SERVERS (
+    SERVER_ID        VARCHAR(20),
+    SERVER_NAME      VARCHAR(100),
+    DC_ID            VARCHAR(10),
+    SERVER_TYPE      VARCHAR(20),
+    OS_NAME          VARCHAR(50),
+    OS_VERSION       VARCHAR(20),
+    CPU_CORES        NUMBER(38,0),
+    RAM_GB           NUMBER(38,0),
+    STORAGE_TB       NUMBER(38,0),
+    IP_ADDRESS       VARCHAR(15),
+    SERVER_STATUS    VARCHAR(20),
+    ENVIRONMENT      VARCHAR(20),
+    OWNER_TEAM       VARCHAR(50),
+    PROVISIONED_DATE DATE
+);
+
+CREATE OR REPLACE TABLE NETWORK_DEVICES (
+    DEVICE_ID       VARCHAR(20),
+    DEVICE_NAME     VARCHAR(100),
+    DC_ID           VARCHAR(10),
+    DEVICE_TYPE     VARCHAR(30),
+    MANUFACTURER    VARCHAR(50),
+    MODEL           VARCHAR(50),
+    FIRMWARE_VER    VARCHAR(20),
+    IP_ADDRESS      VARCHAR(15),
+    PORT_COUNT      NUMBER(38,0),
+    THROUGHPUT_GBPS NUMBER(38,0),
+    DEVICE_STATUS   VARCHAR(20),
+    INSTALL_DATE    DATE,
+    LAST_PATCHED    DATE
+);
+
+CREATE OR REPLACE TABLE APPLICATIONS (
+    APP_ID           VARCHAR(20),
+    APP_NAME         VARCHAR(100),
+    APP_DESCRIPTION  VARCHAR(500),
+    SERVER_ID        VARCHAR(20),
+    APP_TYPE         VARCHAR(30),
+    TECHNOLOGY_STACK VARCHAR(100),
+    BUSINESS_UNIT    VARCHAR(50),
+    CRITICALITY      VARCHAR(20),
+    APP_STATUS       VARCHAR(20),
+    GO_LIVE_DATE     DATE,
+    APP_OWNER        VARCHAR(100)
+);
+
+CREATE OR REPLACE TABLE INCIDENTS (
+    INCIDENT_ID           VARCHAR(20),
+    INCIDENT_TITLE        VARCHAR(300),
+    SERVER_ID             VARCHAR(20),
+    APP_ID                VARCHAR(20),
+    SEVERITY              VARCHAR(10),
+    INCIDENT_STATUS       VARCHAR(20),
+    CREATED_DATE          TIMESTAMP_NTZ(9),
+    RESOLVED_DATE         TIMESTAMP_NTZ(9),
+    ROOT_CAUSE            VARCHAR(500),
+    ASSIGNED_TEAM         VARCHAR(50),
+    RESOLUTION_TIME_HOURS NUMBER(10,2)
+);

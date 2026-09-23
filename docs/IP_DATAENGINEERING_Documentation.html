@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="snowflake-source" content="cortex-agent-authored" />
+  <title>IP_DATAENGINEERING - Project Documentation &amp; Demo Guide</title>
+  <script type="application/json" id="snowflake-report-metadata">
+  {
+    "generated": "2026-09-23",
+    "intent": "Documentation and demo guide for the IP_DATAENGINEERING medallion architecture project for JPMC IP team",
+    "dataSources": [
+      { "type": "database", "name": "IP_DATAENGINEERING", "schemas": ["RAW", "STAGE", "METADATA"] }
+    ],
+    "sections": [
+      { "id": "architecture", "title": "Architecture Overview", "producerNotes": "Mermaid diagram of the medallion architecture flow" },
+      { "id": "object-inventory", "title": "Object Inventory", "producerNotes": "Tables, procedures, and their relationships" },
+      { "id": "demo-guide", "title": "Demo Guide", "producerNotes": "Step-by-step walkthrough for customer demo" }
+    ]
+  }
+  </script>
+  <script src="/libs/mermaid@10.9.6/mermaid.min.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, 'Segoe UI', sans-serif;
+      max-width: 960px; width: 100%;
+      margin: 0 auto; padding: clamp(16px, 4vw, 32px);
+      color: light-dark(#1f2937, #e5e7eb);
+      background: light-dark(#ffffff, #0f172a);
+      line-height: 1.6;
+    }
+    h1 { color: light-dark(#0f172a, #f1f5f9); font-size: 1.8rem; border-bottom: 3px solid light-dark(#2563eb, #3b82f6); padding-bottom: 8px; }
+    h2 { color: light-dark(#1e40af, #93c5fd); font-size: 1.35rem; margin-top: 2rem; border-bottom: 1px solid light-dark(#e5e7eb, #374151); padding-bottom: 4px; }
+    h3 { color: light-dark(#1e3a5f, #7dd3fc); font-size: 1.1rem; margin-top: 1.5rem; }
+    a { color: light-dark(#2563eb, #60a5fa); }
+    img, svg { max-width: 100%; height: auto; }
+    code {
+      background: light-dark(#f1f5f9, #1e293b);
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 0.88em;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+    pre {
+      background: light-dark(#f8fafc, #1e293b);
+      border: 1px solid light-dark(#e2e8f0, #334155);
+      border-radius: 8px; padding: 16px;
+      overflow-x: auto; font-size: 0.85em; line-height: 1.5;
+    }
+    pre code { background: none; padding: 0; }
+    .table-wrap { overflow-x: auto; margin: 12px 0; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+    th, td { border: 1px solid light-dark(#d1d5db, #374151); padding: 8px 12px; text-align: left; }
+    th { background: light-dark(#f3f4f6, #1e293b); font-weight: 600; }
+    tr:nth-child(even) { background: light-dark(#f9fafb, #111827); }
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 12px;
+      font-size: 0.78em; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-type1 { background: light-dark(#dbeafe, #1e3a5f); color: light-dark(#1e40af, #93c5fd); }
+    .badge-type2 { background: light-dark(#fef3c7, #451a03); color: light-dark(#92400e, #fbbf24); }
+    .badge-raw   { background: light-dark(#dcfce7, #052e16); color: light-dark(#166534, #4ade80); }
+    .badge-meta  { background: light-dark(#f3e8ff, #3b0764); color: light-dark(#6b21a8, #c084fc); }
+    .step-box {
+      background: light-dark(#eff6ff, #0c1929);
+      border-left: 4px solid light-dark(#2563eb, #3b82f6);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px; margin: 16px 0;
+    }
+    .step-num {
+      display: inline-block; width: 28px; height: 28px; line-height: 28px;
+      text-align: center; border-radius: 50%;
+      background: light-dark(#2563eb, #3b82f6); color: #fff;
+      font-weight: 700; font-size: 0.85em; margin-right: 8px;
+    }
+    .step-title { font-weight: 600; font-size: 1.05em; }
+    .callout {
+      background: light-dark(#fefce8, #1a1a05);
+      border: 1px solid light-dark(#fde68a, #854d0e);
+      border-radius: 8px; padding: 12px 16px; margin: 12px 0;
+      font-size: 0.92em;
+    }
+    .callout-title { font-weight: 700; color: light-dark(#92400e, #fbbf24); }
+    .flow-section { margin: 24px 0; }
+    .toc { background: light-dark(#f8fafc, #1e293b); border-radius: 8px; padding: 16px 24px; margin: 20px 0; }
+    .toc ul { margin: 4px 0; padding-left: 20px; }
+    .toc li { margin: 4px 0; }
+    .header-meta { color: light-dark(#6b7280, #9ca3af); font-size: 0.9em; margin-top: -8px; }
+    .mermaid { margin: 16px 0; }
+  </style>
+</head>
+<body>
+
+  <h1>IP_DATAENGINEERING</h1>
+  <p class="header-meta">Medallion Architecture ETL Framework | JPMC Infrastructure Platform Team<br/>
+  Database: <code>IP_DATAENGINEERING</code> | Warehouse: <code>IP_DE_WH</code> | Account: <code>SFsenorthamerica-demo387</code></p>
+
+  <nav class="toc">
+    <strong>Contents</strong>
+    <ul>
+      <li><a href="#architecture">1. Architecture Overview</a></li>
+      <li><a href="#object-inventory">2. Object Inventory</a></li>
+      <li><a href="#raw-layer">3. RAW Layer (Source Tables)</a></li>
+      <li><a href="#metadata-layer">4. Metadata Layer (ETL Config)</a></li>
+      <li><a href="#stage-layer">5. STAGE Layer (Target Tables)</a></li>
+      <li><a href="#stored-procedures">6. Stored Procedures</a></li>
+      <li><a href="#scd-logic">7. SCD Type 1 vs Type 2 Logic</a></li>
+      <li><a href="#adding-tables">8. How to Add a New Stage Table</a></li>
+      <li><a href="#demo-guide">9. Customer Demo Guide (Step-by-Step)</a></li>
+    </ul>
+  </nav>
+
+  <!-- ===== 1. ARCHITECTURE ===== -->
+  <h2 id="architecture">1. Architecture Overview</h2>
+  <p>This project implements a <strong>Medallion Architecture</strong> (Raw &rarr; Stage) with metadata-driven SCD processing.
+  The RAW layer receives full-refresh data from source systems daily. A single generic stored procedure reads transformation
+  SQL from a metadata table, creates an intermediate (ID) table, and performs a MERGE into the STAGE layer using either
+  SCD Type 1 (overwrite) or SCD Type 2 (history tracking).</p>
+
+  <div class="flow-section">
+    <pre class="mermaid">
+flowchart LR
+  subgraph SRC ["Source Systems"]
+    S1["Servers"]
+    S2["Data Centers"]
+    S3["Network Devices"]
+    S4["Applications"]
+    S5["Incidents"]
+  end
+
+  subgraph RAW_SCHEMA ["RAW Schema (Full Refresh)"]
+    R1["RAW.SERVERS"]
+    R2["RAW.DATA_CENTERS"]
+    R3["RAW.NETWORK_DEVICES"]
+    R4["RAW.APPLICATIONS"]
+    R5["RAW.INCIDENTS"]
+  end
+
+  subgraph META ["METADATA Schema"]
+    M1["ETL_CONFIG"]
+  end
+
+  subgraph STAGE_SCHEMA ["STAGE Schema"]
+    T1["STG_SERVER_SUMMARY\n(SCD Type 1)"]
+    T2["STG_INFRA_ASSETS\n(SCD Type 2)"]
+    T3["STG_INCIDENT_DETAIL\n(SCD Type 1)"]
+  end
+
+  S1 --> R1
+  S2 --> R2
+  S3 --> R3
+  S4 --> R4
+  S5 --> R5
+
+  R1 --> T1
+  R2 --> T1
+  R2 --> T2
+  R3 --> T2
+  R1 --> T3
+  R4 --> T3
+  R5 --> T3
+
+  M1 -.->|"drives"| T1
+  M1 -.->|"drives"| T2
+  M1 -.->|"drives"| T3
+    </pre>
+  </div>
+
+  <div class="flow-section">
+    <h3>Stored Procedure Flow</h3>
+    <pre class="mermaid">
+flowchart TD
+  A["SP_LOAD_STAGE(table_name)"] --> B["STEP 1: Read ETL_CONFIG\n- Get SOURCE_SQL\n- Get PK_COLUMNS\n- Get SCD_TYPE"]
+  B --> C["STEP 2: Create ID Table\nRun SOURCE_SQL into\nSTAGE.{table}_ID"]
+  C --> D{"SCD_TYPE?"}
+  D -->|"Type 1"| E["MERGE: Upsert\n- Match on PK\n- Update changed rows\n- Insert new rows"]
+  D -->|"Type 2"| F["UPDATE: Expire old\n- Set DW_ACTIVE_FLAG = N\n- Set DW_END_DTS"]
+  F --> G["INSERT: New version\n- DW_ACTIVE_FLAG = Y\n- DW_START_DTS = now\n- DW_END_DTS = 9999-12-31"]
+  E --> H["STEP 4: Drop ID Table"]
+  G --> H
+    </pre>
+  </div>
+
+  <!-- ===== 2. OBJECT INVENTORY ===== -->
+  <h2 id="object-inventory">2. Object Inventory</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Schema</th><th>Object Name</th><th>Type</th><th>Rows</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-raw">RAW</span></td><td><code>DATA_CENTERS</code></td><td>Table</td><td>8</td><td>Data center locations (NYC, Delaware, Dallas, London, Singapore, Mumbai)</td></tr>
+        <tr><td><span class="badge badge-raw">RAW</span></td><td><code>SERVERS</code></td><td>Table</td><td>51</td><td>Physical/virtual servers across all data centers</td></tr>
+        <tr><td><span class="badge badge-raw">RAW</span></td><td><code>NETWORK_DEVICES</code></td><td>Table</td><td>41</td><td>Routers, switches, firewalls, load balancers</td></tr>
+        <tr><td><span class="badge badge-raw">RAW</span></td><td><code>APPLICATIONS</code></td><td>Table</td><td>30</td><td>Business applications (trade engine, risk calc, payments, etc.)</td></tr>
+        <tr><td><span class="badge badge-raw">RAW</span></td><td><code>INCIDENTS</code></td><td>Table</td><td>100</td><td>Infrastructure incidents and tickets</td></tr>
+        <tr><td><span class="badge badge-meta">METADATA</span></td><td><code>ETL_CONFIG</code></td><td>Table</td><td>3</td><td>Configuration for each stage table load</td></tr>
+        <tr><td><span class="badge badge-meta">METADATA</span></td><td><code>SP_LOAD_STAGE</code></td><td>Procedure</td><td>-</td><td>Generic loader: reads config, creates ID table, MERGE by SCD type</td></tr>
+        <tr><td><span class="badge badge-meta">METADATA</span></td><td><code>SP_RUN_ALL_STAGE_LOADS</code></td><td>Procedure</td><td>-</td><td>Orchestrator: loops all active configs</td></tr>
+        <tr><td><span class="badge badge-type1">STAGE</span></td><td><code>STG_SERVER_SUMMARY</code></td><td>Table</td><td>51</td><td>Servers + Data Centers (SCD Type 1)</td></tr>
+        <tr><td><span class="badge badge-type2">STAGE</span></td><td><code>STG_INFRA_ASSETS</code></td><td>Table</td><td>42</td><td>Network Devices + Data Centers (SCD Type 2)</td></tr>
+        <tr><td><span class="badge badge-type1">STAGE</span></td><td><code>STG_INCIDENT_DETAIL</code></td><td>Table</td><td>100</td><td>Incidents + Servers + Apps (SCD Type 1)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 3. RAW LAYER ===== -->
+  <h2 id="raw-layer">3. RAW Layer (Source Tables)</h2>
+  <p>Represents a <strong>full daily refresh</strong> from source systems. Every run replaces all rows (no incremental logic).
+  These tables simulate the infrastructure data maintained by the JPMC IP team.</p>
+
+  <h3>RAW.DATA_CENTERS</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>DC_ID</code></td><td>VARCHAR(10)</td><td>Primary key (DC001-DC008)</td></tr>
+        <tr><td><code>DC_NAME</code></td><td>VARCHAR(100)</td><td>e.g., JPMC-NYC-PRIMARY</td></tr>
+        <tr><td><code>DC_LOCATION</code></td><td>VARCHAR(200)</td><td>Physical address</td></tr>
+        <tr><td><code>DC_REGION</code></td><td>VARCHAR(50)</td><td>US-EAST, US-CENTRAL, EU-WEST, APAC</td></tr>
+        <tr><td><code>DC_TIER</code></td><td>VARCHAR(10)</td><td>TIER-3 or TIER-4</td></tr>
+        <tr><td><code>TOTAL_CAPACITY / CURRENT_USAGE</code></td><td>NUMBER</td><td>Rack unit capacity</td></tr>
+        <tr><td><code>DC_STATUS</code></td><td>VARCHAR(20)</td><td>ACTIVE or STANDBY</td></tr>
+        <tr><td><code>CONTACT_EMAIL</code></td><td>VARCHAR(100)</td><td>Ops team contact</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>RAW.SERVERS</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>SERVER_ID</code></td><td>VARCHAR(20)</td><td>Primary key (SRV-0000 to SRV-0049)</td></tr>
+        <tr><td><code>SERVER_NAME</code></td><td>VARCHAR(100)</td><td>e.g., JPMC-SRV-PROD-001</td></tr>
+        <tr><td><code>DC_ID</code></td><td>VARCHAR(10)</td><td>FK to DATA_CENTERS</td></tr>
+        <tr><td><code>SERVER_TYPE</code></td><td>VARCHAR(20)</td><td>PHYSICAL, VIRTUAL, CONTAINER, CLOUD-VM</td></tr>
+        <tr><td><code>OS_NAME / OS_VERSION</code></td><td>VARCHAR</td><td>RHEL 8.6, WINDOWS-SERVER 2019, etc.</td></tr>
+        <tr><td><code>CPU_CORES / RAM_GB / STORAGE_TB</code></td><td>NUMBER</td><td>Hardware specs</td></tr>
+        <tr><td><code>SERVER_STATUS</code></td><td>VARCHAR(20)</td><td>RUNNING, MAINTENANCE, DECOMMISSIONED</td></tr>
+        <tr><td><code>ENVIRONMENT</code></td><td>VARCHAR(20)</td><td>PRODUCTION, UAT, DEVELOPMENT, QA</td></tr>
+        <tr><td><code>OWNER_TEAM</code></td><td>VARCHAR(50)</td><td>TRADE-PLATFORM, RISK-ENGINE, etc.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>RAW.NETWORK_DEVICES</h3>
+  <p>40 devices: routers (Cisco ASR-9000), switches (Juniper QFX-5200), firewalls (Palo Alto PA-5260), load balancers (F5 BIG-IP).</p>
+  <p>Key columns: <code>DEVICE_ID</code> (PK), <code>DC_ID</code> (FK), <code>DEVICE_TYPE</code>, <code>MANUFACTURER</code>, <code>FIRMWARE_VER</code>, <code>DEVICE_STATUS</code>, <code>LAST_PATCHED</code>.</p>
+
+  <h3>RAW.APPLICATIONS</h3>
+  <p>30 business applications: JPMC-TRADE-ENGINE, JPMC-RISK-CALC, JPMC-PAYMENTS-GW, JPMC-FRAUD-DETECT, etc.</p>
+  <p>Key columns: <code>APP_ID</code> (PK), <code>SERVER_ID</code> (FK), <code>APP_TYPE</code>, <code>TECHNOLOGY_STACK</code>, <code>BUSINESS_UNIT</code>, <code>CRITICALITY</code>.</p>
+
+  <h3>RAW.INCIDENTS</h3>
+  <p>100 infrastructure incidents: CPU spikes, memory leaks, network latency, disk space alerts, certificate expirations, etc.</p>
+  <p>Key columns: <code>INCIDENT_ID</code> (PK), <code>SERVER_ID</code> (FK), <code>APP_ID</code> (FK), <code>SEVERITY</code> (P1-P4), <code>INCIDENT_STATUS</code>, <code>RESOLUTION_TIME_HOURS</code>.</p>
+
+  <!-- ===== 4. METADATA LAYER ===== -->
+  <h2 id="metadata-layer">4. Metadata Layer (ETL Config)</h2>
+  <p>The <code>METADATA.ETL_CONFIG</code> table is the control plane. Each row defines one stage table load:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>CONFIG_ID</code></td><td>NUMBER (auto)</td><td>Surrogate key</td></tr>
+        <tr><td><code>STAGE_TABLE_NAME</code></td><td>VARCHAR(200)</td><td>Target table name in STAGE schema</td></tr>
+        <tr><td><code>SOURCE_SQL</code></td><td>VARCHAR(16000)</td><td>The SELECT statement that joins RAW tables</td></tr>
+        <tr><td><code>PRIMARY_KEY_COLUMNS</code></td><td>VARCHAR(500)</td><td>Pipe-delimited PK columns (e.g., <code>SERVER_ID</code> or <code>COL1|COL2</code>)</td></tr>
+        <tr><td><code>SCD_TYPE</code></td><td>NUMBER(1)</td><td>1 = overwrite, 2 = track history</td></tr>
+        <tr><td><code>IS_ACTIVE</code></td><td>BOOLEAN</td><td>Only active configs are processed</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Current Configurations</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stage Table</th><th>SCD Type</th><th>Primary Key</th><th>Source Tables Joined</th></tr></thead>
+      <tbody>
+        <tr><td><code>STG_SERVER_SUMMARY</code></td><td><span class="badge badge-type1">TYPE 1</span></td><td><code>SERVER_ID</code></td><td>SERVERS + DATA_CENTERS</td></tr>
+        <tr><td><code>STG_INFRA_ASSETS</code></td><td><span class="badge badge-type2">TYPE 2</span></td><td><code>DEVICE_ID</code></td><td>NETWORK_DEVICES + DATA_CENTERS</td></tr>
+        <tr><td><code>STG_INCIDENT_DETAIL</code></td><td><span class="badge badge-type1">TYPE 1</span></td><td><code>INCIDENT_ID</code></td><td>INCIDENTS + SERVERS + APPLICATIONS</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 5. STAGE LAYER ===== -->
+  <h2 id="stage-layer">5. STAGE Layer (Target Tables)</h2>
+  <p>Stage tables contain business columns (from the SOURCE_SQL) plus metadata columns for tracking data lineage:</p>
+
+  <h3>SCD Type 1 Metadata Columns</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>DW_INSERT_DTS</code></td><td>TIMESTAMP_NTZ</td><td>When the row was first inserted</td></tr>
+        <tr><td><code>DW_UPDATE_DTS</code></td><td>TIMESTAMP_NTZ</td><td>When the row was last updated (same as insert for new rows)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>SCD Type 2 Metadata Columns (all of the above, plus)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>DW_INSERT_DTS</code></td><td>TIMESTAMP_NTZ</td><td>When this version was inserted</td></tr>
+        <tr><td><code>DW_UPDATE_DTS</code></td><td>TIMESTAMP_NTZ</td><td>When this version was last touched</td></tr>
+        <tr><td><code>DW_ACTIVE_FLAG</code></td><td>VARCHAR(1)</td><td><code>Y</code> = current version, <code>N</code> = expired</td></tr>
+        <tr><td><code>DW_START_DTS</code></td><td>TIMESTAMP_NTZ</td><td>When this version became active</td></tr>
+        <tr><td><code>DW_END_DTS</code></td><td>TIMESTAMP_NTZ</td><td><code>9999-12-31</code> for active rows; actual end timestamp for expired</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== 6. STORED PROCEDURES ===== -->
+  <h2 id="stored-procedures">6. Stored Procedures</h2>
+
+  <h3>SP_LOAD_STAGE(P_STAGE_TABLE_NAME VARCHAR)</h3>
+  <p>The core generic procedure. Called once per stage table. Performs all 4 steps dynamically:</p>
+  <ol>
+    <li><strong>Read Config</strong> &mdash; Queries <code>ETL_CONFIG</code> for the source SQL, PK columns, and SCD type.</li>
+    <li><strong>Create ID Table</strong> &mdash; Runs <code>CREATE OR REPLACE TABLE {table}_ID AS {SOURCE_SQL}</code>. This intermediate table has only business columns.</li>
+    <li><strong>MERGE/Load</strong> &mdash; Dynamically builds a MERGE statement using <code>INFORMATION_SCHEMA.COLUMNS</code> to discover columns. Handles Type 1 (upsert) and Type 2 (expire + insert) differently.</li>
+    <li><strong>Cleanup</strong> &mdash; Drops the ID table and temporary metadata tables.</li>
+  </ol>
+  <pre><code>-- Usage (single table):
+CALL IP_DATAENGINEERING.METADATA.SP_LOAD_STAGE('STG_SERVER_SUMMARY');
+
+-- Returns: 'ID table created. SCD Type 1 MERGE completed. ID table dropped.'</code></pre>
+
+  <h3>SP_RUN_ALL_STAGE_LOADS()</h3>
+  <p>Orchestrator that loops through all <code>IS_ACTIVE = TRUE</code> rows in <code>ETL_CONFIG</code> and calls <code>SP_LOAD_STAGE</code> for each:</p>
+  <pre><code>-- Run all active stage table loads:
+CALL IP_DATAENGINEERING.METADATA.SP_RUN_ALL_STAGE_LOADS();
+
+-- Returns status for each table:
+-- STG_SERVER_SUMMARY => ID table created. SCD Type 1 MERGE completed. ID table dropped.
+-- STG_INFRA_ASSETS => ID table created. SCD Type 2 completed. ID table dropped.
+-- STG_INCIDENT_DETAIL => ID table created. SCD Type 1 MERGE completed. ID table dropped.</code></pre>
+
+  <!-- ===== 7. SCD LOGIC ===== -->
+  <h2 id="scd-logic">7. SCD Type 1 vs Type 2 Logic</h2>
+
+  <h3>SCD Type 1 (Overwrite)</h3>
+  <p>Used for <code>STG_SERVER_SUMMARY</code> and <code>STG_INCIDENT_DETAIL</code>. No history is kept.</p>
+  <pre class="mermaid">
+flowchart LR
+  ID["ID Table\n(new data)"] --> M{"MERGE\non PK"}
+  M -->|"Match + Changed"| U["UPDATE row\nDW_UPDATE_DTS = now"]
+  M -->|"Match + Same"| S["Skip\n(no change)"]
+  M -->|"No Match"| I["INSERT row\nDW_INSERT_DTS = now\nDW_UPDATE_DTS = now"]
+  </pre>
+
+  <h3>SCD Type 2 (History Tracking)</h3>
+  <p>Used for <code>STG_INFRA_ASSETS</code>. Old versions are preserved with an expiration timestamp.</p>
+  <pre class="mermaid">
+flowchart LR
+  ID2["ID Table\n(new data)"] --> CHK{"Change\nDetected?"}
+  CHK -->|"Yes"| EXP["EXPIRE old row\nDW_ACTIVE_FLAG = N\nDW_END_DTS = now"]
+  EXP --> INS["INSERT new version\nDW_ACTIVE_FLAG = Y\nDW_START_DTS = now\nDW_END_DTS = 9999-12-31"]
+  CHK -->|"No"| SKIP2["Skip\n(no change)"]
+  ID2 --> NEW{"New\nRecord?"}
+  NEW -->|"Yes"| INS
+  NEW -->|"No"| CHK
+  </pre>
+
+  <div class="callout">
+    <span class="callout-title">Change Detection</span><br/>
+    The procedure compares every non-PK business column between the ID table and the stage table using
+    <code>NVL(CAST(TGT.col AS VARCHAR), '~~NULL~~') != NVL(CAST(SRC.col AS VARCHAR), '~~NULL~~')</code>.
+    This handles NULL values correctly and works across all data types.
+  </div>
+
+  <!-- ===== 8. ADDING TABLES ===== -->
+  <h2 id="adding-tables">8. How to Add a New Stage Table</h2>
+  <div class="step-box">
+    <span class="step-num">1</span><span class="step-title">Write the Source SQL</span>
+    <p>Write a SELECT that joins the necessary RAW tables. Test it standalone first.</p>
+  </div>
+  <div class="step-box">
+    <span class="step-num">2</span><span class="step-title">Create the Target Table</span>
+    <p>Create the table in <code>STAGE</code> schema with the same columns as your SELECT, plus the <code>DW_*</code> metadata columns.
+    For Type 1: add <code>DW_INSERT_DTS</code> and <code>DW_UPDATE_DTS</code>.
+    For Type 2: also add <code>DW_ACTIVE_FLAG</code>, <code>DW_START_DTS</code>, <code>DW_END_DTS</code>.</p>
+  </div>
+  <div class="step-box">
+    <span class="step-num">3</span><span class="step-title">Insert Config Row</span>
+    <pre><code>INSERT INTO IP_DATAENGINEERING.METADATA.ETL_CONFIG
+  (STAGE_TABLE_NAME, SOURCE_SQL, PRIMARY_KEY_COLUMNS, SCD_TYPE)
+VALUES
+  ('STG_YOUR_TABLE', 'SELECT ... FROM ...', 'YOUR_PK_COL', 2);</code></pre>
+  </div>
+  <div class="step-box">
+    <span class="step-num">4</span><span class="step-title">Run the Load</span>
+    <pre><code>CALL IP_DATAENGINEERING.METADATA.SP_LOAD_STAGE('STG_YOUR_TABLE');</code></pre>
+    <p>Or it will be picked up automatically by <code>SP_RUN_ALL_STAGE_LOADS()</code>.</p>
+  </div>
+
+  <!-- ===== 9. DEMO GUIDE ===== -->
+  <h2 id="demo-guide">9. Customer Demo Guide (Step-by-Step)</h2>
+  <p>Follow these steps in order during the demo. Each step includes the exact SQL to run and talking points.</p>
+
+  <h3>Part A: Setup Context</h3>
+  <div class="step-box">
+    <span class="step-num">1</span><span class="step-title">Set the Session Context</span>
+    <pre><code>USE DATABASE IP_DATAENGINEERING;
+USE WAREHOUSE IP_DE_WH;</code></pre>
+    <p><strong>Talk about:</strong> "We have built a metadata-driven ETL framework using a medallion architecture in Snowflake.
+    The database has three schemas: RAW for source data, STAGE for transformed/joined data, and METADATA for the control plane."</p>
+  </div>
+
+  <h3>Part B: Show the RAW Layer</h3>
+  <div class="step-box">
+    <span class="step-num">2</span><span class="step-title">Explore RAW Tables</span>
+    <pre><code>-- Show all RAW tables
+SELECT TABLE_NAME, ROW_COUNT
+FROM IP_DATAENGINEERING.INFORMATION_SCHEMA.TABLES
+WHERE TABLE_SCHEMA = 'RAW' ORDER BY TABLE_NAME;
+
+-- Preview data centers
+SELECT * FROM RAW.DATA_CENTERS;
+
+-- Preview servers
+SELECT * FROM RAW.SERVERS LIMIT 10;</code></pre>
+    <p><strong>Talk about:</strong> "The RAW layer has 5 source tables representing infrastructure data: servers, data centers,
+    network devices, applications, and incidents. This simulates a full daily extract from the source system &mdash; no incremental logic at the RAW layer."</p>
+  </div>
+
+  <h3>Part C: Show the Metadata Control Plane</h3>
+  <div class="step-box">
+    <span class="step-num">3</span><span class="step-title">Show ETL Configuration</span>
+    <pre><code>SELECT STAGE_TABLE_NAME, PRIMARY_KEY_COLUMNS, SCD_TYPE, IS_ACTIVE
+FROM METADATA.ETL_CONFIG;</code></pre>
+    <p><strong>Talk about:</strong> "This is the control plane. Each row defines: which stage table to load, the SQL to produce
+    the data (joins across RAW), the primary key, and whether it uses SCD Type 1 or Type 2. The customer just adds a row here
+    to onboard a new table &mdash; no new stored procedures needed."</p>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">4</span><span class="step-title">Show the Source SQL for One Config</span>
+    <pre><code>SELECT SOURCE_SQL FROM METADATA.ETL_CONFIG
+WHERE STAGE_TABLE_NAME = 'STG_SERVER_SUMMARY';</code></pre>
+    <p><strong>Talk about:</strong> "The SOURCE_SQL is a standard SELECT with joins. The procedure runs this SQL to create
+    an intermediate table, then merges it into the target."</p>
+  </div>
+
+  <h3>Part D: Run a Full Load</h3>
+  <div class="step-box">
+    <span class="step-num">5</span><span class="step-title">Truncate Stage Tables (Reset for Demo)</span>
+    <pre><code>TRUNCATE TABLE STAGE.STG_SERVER_SUMMARY;
+TRUNCATE TABLE STAGE.STG_INFRA_ASSETS;
+TRUNCATE TABLE STAGE.STG_INCIDENT_DETAIL;
+
+-- Verify empty
+SELECT 'STG_SERVER_SUMMARY' AS TBL, COUNT(*) AS CNT FROM STAGE.STG_SERVER_SUMMARY
+UNION ALL SELECT 'STG_INFRA_ASSETS', COUNT(*) FROM STAGE.STG_INFRA_ASSETS
+UNION ALL SELECT 'STG_INCIDENT_DETAIL', COUNT(*) FROM STAGE.STG_INCIDENT_DETAIL;</code></pre>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">6</span><span class="step-title">Run the Orchestrator</span>
+    <pre><code>CALL METADATA.SP_RUN_ALL_STAGE_LOADS();</code></pre>
+    <p><strong>Talk about:</strong> "One call loads all three stage tables. The procedure reads each config, creates the intermediate
+    ID table, runs the MERGE, and cleans up. Let's verify the counts."</p>
+    <pre><code>SELECT 'STG_SERVER_SUMMARY' AS TBL, COUNT(*) AS CNT FROM STAGE.STG_SERVER_SUMMARY
+UNION ALL SELECT 'STG_INFRA_ASSETS', COUNT(*) FROM STAGE.STG_INFRA_ASSETS
+UNION ALL SELECT 'STG_INCIDENT_DETAIL', COUNT(*) FROM STAGE.STG_INCIDENT_DETAIL;</code></pre>
+  </div>
+
+  <h3>Part E: Demonstrate SCD Type 1 (Overwrite)</h3>
+  <div class="step-box">
+    <span class="step-num">7</span><span class="step-title">Show Current State of a Server</span>
+    <pre><code>SELECT SERVER_ID, SERVER_NAME, OS_NAME, OS_VERSION, RAM_GB,
+       DW_INSERT_DTS, DW_UPDATE_DTS
+FROM STAGE.STG_SERVER_SUMMARY
+WHERE SERVER_ID = 'SRV-0010';</code></pre>
+    <p><strong>Note the DW_INSERT_DTS and DW_UPDATE_DTS are the same</strong> (row was never updated since initial load).</p>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">8</span><span class="step-title">Simulate a Source Change</span>
+    <pre><code>-- Source system upgraded the OS
+UPDATE RAW.SERVERS SET OS_VERSION = '24.04', RAM_GB = 128
+WHERE SERVER_ID = 'SRV-0010';</code></pre>
+    <p><strong>Talk about:</strong> "The source system pushed an update &mdash; the server got a new OS version and more RAM.
+    In a real scenario, this would happen through the daily full refresh. Let's run the load."</p>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">9</span><span class="step-title">Reload and Verify Type 1</span>
+    <pre><code>CALL METADATA.SP_LOAD_STAGE('STG_SERVER_SUMMARY');
+
+SELECT SERVER_ID, SERVER_NAME, OS_NAME, OS_VERSION, RAM_GB,
+       DW_INSERT_DTS, DW_UPDATE_DTS,
+       CASE WHEN DW_UPDATE_DTS > DW_INSERT_DTS THEN 'UPDATED' ELSE 'ORIGINAL' END AS STATUS
+FROM STAGE.STG_SERVER_SUMMARY
+WHERE SERVER_ID = 'SRV-0010';</code></pre>
+    <p><strong>Talk about:</strong> "SCD Type 1 overwrites in place. The row now shows the new OS version and RAM, the
+    DW_UPDATE_DTS moved forward, but the DW_INSERT_DTS is still the original insert time. There is only ONE row &mdash; no history kept."</p>
+  </div>
+
+  <h3>Part F: Demonstrate SCD Type 2 (History Tracking)</h3>
+  <div class="step-box">
+    <span class="step-num">10</span><span class="step-title">Show Current State of a Network Device</span>
+    <pre><code>SELECT DEVICE_ID, DEVICE_NAME, FIRMWARE_VER, DEVICE_STATUS,
+       DW_ACTIVE_FLAG, DW_START_DTS, DW_END_DTS
+FROM STAGE.STG_INFRA_ASSETS
+WHERE DEVICE_ID = 'NET-0015';</code></pre>
+    <p><strong>Note:</strong> Single row with <code>DW_ACTIVE_FLAG = Y</code> and <code>DW_END_DTS = 9999-12-31</code>.</p>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">11</span><span class="step-title">Simulate a Device Change</span>
+    <pre><code>-- Device firmware updated, status changed
+UPDATE RAW.NETWORK_DEVICES
+SET FIRMWARE_VER = 'v20.0.0', DEVICE_STATUS = 'MAINTENANCE'
+WHERE DEVICE_ID = 'NET-0015';</code></pre>
+  </div>
+
+  <div class="step-box">
+    <span class="step-num">12</span><span class="step-title">Reload and Verify Type 2</span>
+    <pre><code>CALL METADATA.SP_LOAD_STAGE('STG_INFRA_ASSETS');
+
+SELECT DEVICE_ID, DEVICE_NAME, FIRMWARE_VER, DEVICE_STATUS,
+       DW_ACTIVE_FLAG, DW_START_DTS, DW_END_DTS
+FROM STAGE.STG_INFRA_ASSETS
+WHERE DEVICE_ID = 'NET-0015'
+ORDER BY DW_START_DTS;</code></pre>
+    <p><strong>Talk about:</strong> "SCD Type 2 preserves history. Now we have TWO rows:<br/>
+    &bull; The <strong>old row</strong> is expired: <code>DW_ACTIVE_FLAG = N</code>, <code>DW_END_DTS</code> shows when it was superseded.<br/>
+    &bull; The <strong>new row</strong> is active: <code>DW_ACTIVE_FLAG = Y</code>, <code>DW_END_DTS = 9999-12-31</code>.<br/>
+    We can always query the full change history for audit or compliance, and the active view just filters on <code>DW_ACTIVE_FLAG = 'Y'</code>."</p>
+  </div>
+
+  <h3>Part G: Show Idempotency</h3>
+  <div class="step-box">
+    <span class="step-num">13</span><span class="step-title">Re-run With No Changes</span>
+    <pre><code>-- Record current timestamps
+SELECT MAX(DW_UPDATE_DTS) AS BEFORE_TS FROM STAGE.STG_SERVER_SUMMARY;
+
+-- Re-run
+CALL METADATA.SP_LOAD_STAGE('STG_SERVER_SUMMARY');
+
+-- Verify nothing changed
+SELECT MAX(DW_UPDATE_DTS) AS AFTER_TS FROM STAGE.STG_SERVER_SUMMARY;</code></pre>
+    <p><strong>Talk about:</strong> "The procedure is idempotent. If nothing changed in the source, no rows are updated in the target.
+    The timestamps are identical before and after. This means you can safely re-run the pipeline without side effects."</p>
+  </div>
+
+  <h3>Part H: Show Extensibility</h3>
+  <div class="step-box">
+    <span class="step-num">14</span><span class="step-title">Explain How to Add a New Table</span>
+    <p><strong>Talk about:</strong> "To add a new stage table, the customer just does three things:</p>
+    <ol>
+      <li>Write the SELECT that produces the data</li>
+      <li>Create the target table with the <code>DW_*</code> metadata columns</li>
+      <li>Insert one row into <code>ETL_CONFIG</code></li>
+    </ol>
+    <p>No stored procedure changes needed. The same generic procedure handles everything."</p>
+  </div>
+
+  <h3>Part I: Wrap-Up Talking Points</h3>
+  <div class="callout">
+    <span class="callout-title">Key Value Propositions</span><br/>
+    <strong>1. Metadata-Driven:</strong> All transformation logic lives in a config table, not in code. Easy to audit and change.<br/>
+    <strong>2. Generic Procedure:</strong> One stored procedure handles all tables. Reduces code duplication and maintenance.<br/>
+    <strong>3. Flexible SCD:</strong> Support both Type 1 and Type 2 per table, configurable via a single flag.<br/>
+    <strong>4. Idempotent:</strong> Safe to re-run. No duplicates, no unnecessary updates.<br/>
+    <strong>5. Auto-Discovery:</strong> The procedure reads column schemas dynamically from INFORMATION_SCHEMA. Adding columns to the source SQL and target table just works &mdash; no procedure changes.<br/>
+    <strong>6. Snowflake Native:</strong> Pure SQL stored procedures, no external tools or orchestrators. Can be scheduled with Snowflake Tasks.
+  </div>
+
+  <hr style="margin: 32px 0; border: none; border-top: 1px solid light-dark(#e5e7eb, #374151);" />
+  <p style="color: light-dark(#9ca3af, #6b7280); font-size: 0.82em; text-align: center;">
+    IP_DATAENGINEERING Documentation | Generated 2026-09-23 | Snowflake Account: SFsenorthamerica-demo387
+  </p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'strict',
+    theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+  });
+</script>
+</body>
+</html>
