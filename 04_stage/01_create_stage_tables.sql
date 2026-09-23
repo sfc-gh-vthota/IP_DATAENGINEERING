@@ -78,3 +78,23 @@ CREATE OR REPLACE TABLE STG_INCIDENT_DETAIL (
     DW_INSERT_DTS           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     DW_UPDATE_DTS           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
+
+----------------------------------------------------------------------
+-- STG_APP_SERVER_MAP (SCD Type 1 - Composite PK: APP_ID + SERVER_ID)
+----------------------------------------------------------------------
+CREATE OR REPLACE TABLE STG_APP_SERVER_MAP (
+    APP_ID              VARCHAR(20),
+    SERVER_ID           VARCHAR(20),
+    APP_NAME            VARCHAR(100),
+    APP_TYPE            VARCHAR(30),
+    CRITICALITY         VARCHAR(20),
+    BUSINESS_UNIT       VARCHAR(50),
+    SERVER_NAME         VARCHAR(100),
+    SERVER_TYPE         VARCHAR(20),
+    ENVIRONMENT         VARCHAR(20),
+    SERVER_STATUS       VARCHAR(20),
+    DC_NAME             VARCHAR(100),
+    DC_REGION           VARCHAR(50),
+    DW_INSERT_DTS       TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    DW_UPDATE_DTS       TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
